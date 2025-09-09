@@ -9,9 +9,7 @@ export default function HudBar() {
   const { reset, start, stop } = useElapsed.actions()
   const timerRef = useRef<number | undefined>()
 
-  useEffect(() => { 
-    window.overlay?.setIgnore(true) 
-  }, [])
+  // Click-through removido - janela sempre clicável
 
   useEffect(() => {
     if (isRecording) { 
@@ -34,7 +32,7 @@ export default function HudBar() {
     >
         {/* Container principal - cápsula única - PIXEL PERFECT - CSS FIXED */}
       <div
-        className="relative event-layer w-[520px] h-[48px] flex items-center gap-[14px] justify-center px-[14px] rounded-[20px]"
+        className="relative event-layer w-[520px] h-[48px] flex items-center gap-[18px] justify-center px-[16px] py-[8px] rounded-[20px]"
         style={{
           background: 'rgba(12,12,14,0.6)',
           border: '1px solid rgba(255,255,255,0.25)',
@@ -53,8 +51,6 @@ export default function HudBar() {
         {/* 1. Botão Play/Pause circular - PIXEL PERFECT - CACHE CLEARED */}
         <button
           className="event-layer w-[32px] h-[32px] rounded-full bg-white/10 border border-white/20 text-white/90 flex items-center justify-center hover:bg-white/15 active:bg-white/20 active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-white/30"
-          onMouseOver={() => window.overlay?.setIgnore(false)}
-          onMouseOut={() => window.overlay?.setIgnore(true)}
           onClick={(e) => {
             e.preventDefault()
             e.stopPropagation()
@@ -78,8 +74,6 @@ export default function HudBar() {
         {/* 4. Botão "Ask AI" - PIXEL PERFECT */}
         <button
           className="event-layer h-[32px] rounded-[16px] bg-white/10 border border-white/18 text-white/90 flex items-center gap-[8px] px-[12px] hover:bg-white/14 active:bg-white/18 focus:outline-none focus:ring-2 focus:ring-white/30"
-          onMouseOver={() => window.overlay?.setIgnore(false)}
-          onMouseOut={() => window.overlay?.setIgnore(true)}
           onClick={(e) => {
             e.preventDefault()
             e.stopPropagation()
@@ -93,14 +87,6 @@ export default function HudBar() {
         {/* 5. Botão "Dashboard" - PIXEL PERFECT */}
         <button
           className="event-layer h-[32px] rounded-[16px] bg-white/10 border border-white/18 text-white/90 flex items-center gap-[8px] px-[12px] hover:bg-white/14 active:bg-white/18 focus:outline-none focus:ring-2 focus:ring-white/30"
-          onMouseEnter={() => {
-            console.log('Mouse ENTER Dashboard')
-            window.overlay?.setIgnore(false)
-          }}
-          onMouseLeave={() => {
-            console.log('Mouse LEAVE Dashboard')
-            window.overlay?.setIgnore(true)
-          }}
           onClick={(e) => {
             console.log('CLICK Dashboard - INICIANDO')
             e.preventDefault()
@@ -121,40 +107,47 @@ export default function HudBar() {
 
         {/* 6. Botão Fechar - Vermelho com X */}
         <button
-          className="event-layer w-[32px] h-[32px] text-white flex items-center justify-center active:scale-[0.98] focus:outline-none"
+          className="event-layer w-[32px] h-[32px] text-white flex items-center justify-center active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-red-300"
           style={{
             backgroundColor: '#ef4444',
             border: '1px solid #dc2626',
             borderRadius: '12px',
-            boxShadow: '0 0 0 2px rgba(239, 68, 68, 0.3)'
+            boxShadow: '0 0 0 2px rgba(239, 68, 68, 0.3)',
+            pointerEvents: 'auto'
           }}
           onMouseEnter={(e) => {
-            console.log('Mouse ENTER Close button')
-            window.overlay?.setIgnore(false)
             // Hover effect
             e.currentTarget.style.backgroundColor = '#dc2626'
           }}
           onMouseLeave={(e) => {
-            console.log('Mouse LEAVE Close button')
-            // NÃO reativar click-through imediatamente
-            setTimeout(() => {
-              window.overlay?.setIgnore(true)
-            }, 100)
             // Reset hover effect
             e.currentTarget.style.backgroundColor = '#ef4444'
           }}
-          onClick={(e) => {
+          onClick={async (e) => {
             console.log('CLICK Close button - FECHANDO APP')
             e.preventDefault()
             e.stopPropagation()
-            window.overlay?.closeApp()
-          }}
-          onMouseDown={(e) => {
-            console.log('MOUSE DOWN Close button')
-            e.preventDefault()
-            e.stopPropagation()
-            // Garantir que click-through está desativado
-            window.overlay?.setIgnore(false)
+            
+            try {
+              console.log('Verificando se window.overlay existe:', !!window.overlay)
+              console.log('Verificando se closeApp existe:', !!window.overlay?.closeApp)
+              
+              if (window.overlay?.closeApp) {
+                console.log('Chamando window.overlay.closeApp()...')
+                await window.overlay.closeApp()
+                console.log('closeApp() executado com sucesso')
+              } else {
+                console.error('window.overlay.closeApp não está disponível')
+                // Fallback: tentar fechar via window.close()
+                console.log('Tentando window.close() como fallback...')
+                window.close()
+              }
+            } catch (error) {
+              console.error('Erro ao fechar app:', error)
+              // Fallback: tentar fechar via window.close()
+              console.log('Tentando window.close() como fallback...')
+              window.close()
+            }
           }}
           aria-label="Fechar aplicativo"
         >

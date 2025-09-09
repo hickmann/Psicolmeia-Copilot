@@ -29,19 +29,30 @@ async function createWindows() {
     frame: false,
     transparent: true,
     resizable: false,
-    movable: false,
-    hasShadow: false,
+    movable: true,                         // Habilitado para permitir interação
+    hasShadow: true,                       // Reativar sombra para melhor visual
     alwaysOnTop: true,
     focusable: true,
+    skipTaskbar: false,                    // Garantir que aparece na taskbar
+    show: true,                            // Garantir que é visível
     backgroundColor: '#00000000',
+    roundedCorners: true,                  // Garantir cantos arredondados
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
-      contextIsolation: true, nodeIntegration: false, sandbox: false
+      contextIsolation: true, 
+      nodeIntegration: false, 
+      sandbox: false,
+      webSecurity: false                   // Desabilitar para evitar problemas de CORS
     }
   })
   if (devUrl) await hud.loadURL(devUrl + '#hud')
   else await hud.loadFile(path.join(__dirname, 'renderer/index.html'), { hash: 'hud' })
-  hud.setIgnoreMouseEvents(true, { forward: true }) // click-through global
+  hud.setIgnoreMouseEvents(false) // click-through desabilitado
+  
+  // Garantir que a janela é totalmente interativa
+  hud.setAlwaysOnTop(true, 'screen-saver')
+  hud.focus()
+  hud.show()
 
   // --- PANEL (abaixo do HUD) ---
   panel = new BrowserWindow({
@@ -52,19 +63,30 @@ async function createWindows() {
     frame: false,
     transparent: true,
     resizable: false,
-    movable: false,
-    hasShadow: false,
+    movable: true,                         // Habilitado para permitir interação
+    hasShadow: true,                       // Reativar sombra para melhor visual
     alwaysOnTop: true,
     focusable: true,
+    skipTaskbar: false,                    // Garantir que aparece na taskbar
+    show: true,                            // Garantir que é visível
     backgroundColor: '#00000000',
+    roundedCorners: true,                  // Garantir cantos arredondados
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
-      contextIsolation: true, nodeIntegration: false, sandbox: false
+      contextIsolation: true, 
+      nodeIntegration: false, 
+      sandbox: false,
+      webSecurity: false                   // Desabilitar para evitar problemas de CORS
     }
   })
   if (devUrl) await panel.loadURL(devUrl + '#panel')
   else await panel.loadFile(path.join(__dirname, 'renderer/index.html'), { hash: 'panel' })
-  panel.setIgnoreMouseEvents(true, { forward: true })
+  panel.setIgnoreMouseEvents(false) // click-through desabilitado
+  
+  // Garantir que a janela é totalmente interativa
+  panel.setAlwaysOnTop(true, 'screen-saver')
+  panel.focus()
+  panel.show()
 
   // Recentrar ao trocar de monitor/resolução
   screen.on('display-metrics-changed', () => {
@@ -83,4 +105,24 @@ ipcMain.handle('overlay:set-ignore', (_evt, ignore: boolean) => {
   sender?.setIgnoreMouseEvents(ignore, { forward: true })
 })
 ipcMain.handle('overlay:open-external', (_evt, url: string) => shell.openExternal(url))
-ipcMain.handle('overlay:close-app', () => app.quit())
+ipcMain.handle('overlay:close-app', () => {
+  console.log('overlay:close-app chamado - fechando aplicação')
+  try {
+    // Fechar todas as janelas primeiro
+    const windows = BrowserWindow.getAllWindows()
+    console.log(`Fechando ${windows.length} janelas`)
+    
+    windows.forEach((win, index) => {
+      console.log(`Fechando janela ${index + 1}`)
+      win.close()
+    })
+    
+    // Depois fechar o app
+    app.quit()
+    console.log('app.quit() executado')
+  } catch (error) {
+    console.error('Erro ao fechar app:', error)
+    // Forçar fechamento
+    process.exit(0)
+  }
+})
