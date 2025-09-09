@@ -9,11 +9,12 @@ export default function InsightsPanel(){
       style={{
         background: 'rgba(0,0,0,0.2)',
         backdropFilter: 'blur(40px) saturate(200%)',
-        WebkitBackdropFilter: 'blur(40px) saturate(200%)'
+        WebkitBackdropFilter: 'blur(40px) saturate(200%)',
+        pointerEvents: 'auto'
       }}
     >
       <div
-        className="event-layer w-[520px] rounded-2xl border border-[rgba(255,255,255,0.25)]"
+        className="event-layer w-[520px] rounded-[20px] border border-[rgba(255,255,255,0.25)]"
         style={{
           background: 'rgba(18,18,22,0.6)',
           backdropFilter: 'blur(50px) saturate(250%)',

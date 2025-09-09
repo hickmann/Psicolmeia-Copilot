@@ -10,6 +10,10 @@ export default function HudBar() {
   const timerRef = useRef<number | undefined>()
 
   // Click-through removido - janela sempre clicável
+  useEffect(() => {
+    // Forçar interatividade quando o componente for montado
+    window.overlay?.forceInteractive()
+  }, [])
 
   useEffect(() => {
     if (isRecording) { 
@@ -27,7 +31,8 @@ export default function HudBar() {
       style={{
         background: 'rgba(0,0,0,0.2)',
         backdropFilter: 'blur(40px) saturate(200%)',
-        WebkitBackdropFilter: 'blur(40px) saturate(200%)'
+        WebkitBackdropFilter: 'blur(40px) saturate(200%)',
+        pointerEvents: 'auto'
       }}
     >
         {/* Container principal - cápsula única - PIXEL PERFECT - CSS FIXED */}
@@ -125,6 +130,7 @@ export default function HudBar() {
           }}
           onClick={async (e) => {
             console.log('CLICK Close button - FECHANDO APP')
+            alert('Botão clicado! Fechando app...')
             e.preventDefault()
             e.stopPropagation()
             

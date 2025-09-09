@@ -6,6 +6,6 @@
   color-scheme: dark;
 }
 html,body,#root{ height:100%; background:transparent!important; font-family:Inter,ui-sans-serif,system-ui; overflow:hidden; border-radius:20px; }
-.overlay-root{ position:fixed; inset:0; pointer-events:none; z-index:9999; overflow:hidden; }
+.overlay-root{ position:fixed; inset:0; pointer-events:auto; z-index:9999; overflow:hidden; }
 .event-layer{ pointer-events:auto; }
 /* Dicas: blur e glass estão inline nos componentes para garantir o pixel-perfect */

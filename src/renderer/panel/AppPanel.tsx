@@ -2,11 +2,9 @@ import InsightsPanel from '../shared/InsightsPanel'
 import { useEffect } from 'react'
 
 export default function AppPanel() {
-  useEffect(() => { window.overlay?.setIgnore(true) }, [])
+  // Click-through removido - janela sempre clicável
   return (
-    <div className="overlay-root"
-         onMouseEnter={() => window.overlay?.setIgnore(false)}
-         onMouseLeave={() => window.overlay?.setIgnore(true)}>
+    <div className="overlay-root rounded-[20px]" style={{ pointerEvents: 'auto' }}>
       <InsightsPanel />
     </div>
   )
