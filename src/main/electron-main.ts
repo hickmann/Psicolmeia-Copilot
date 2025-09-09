@@ -41,7 +41,7 @@ async function createWindows() {
     titleBarStyle: 'hidden',               // Esconder barra de título
     titleBarOverlay: false,                // Desabilitar overlay da barra de título
     webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
+      preload: path.join(__dirname, 'preload.cjs'),
       contextIsolation: true, 
       nodeIntegration: false, 
       sandbox: false,
@@ -49,9 +49,30 @@ async function createWindows() {
     }
   })
   
+  console.log('🔧 Main: Janela criada, preload path:', path.join(__dirname, 'preload.cjs'))
+  
   // Carregar a aplicação unificada
   if (devUrl) await mainWindow.loadURL(devUrl)
   else await mainWindow.loadFile(path.join(__dirname, 'renderer/index.html'))
+  
+  // Verificar se o preload foi carregado
+  mainWindow.webContents.on('did-finish-load', () => {
+    console.log('🔧 Main: Página carregada, verificando preload...')
+    mainWindow?.webContents.executeJavaScript(`
+      console.log('🔧 Renderer: window.overlay disponível:', !!window.overlay)
+      console.log('🔧 Renderer: window.overlay.openExternal disponível:', !!window.overlay?.openExternal)
+      if (window.overlay) {
+        console.log('✅ Preload carregado com sucesso!')
+      } else {
+        console.error('❌ Preload NÃO foi carregado!')
+      }
+    `)
+  })
+  
+  // Log quando o preload for carregado
+  mainWindow.webContents.on('preload-error', (event, preloadPath, error) => {
+    console.error('❌ Erro ao carregar preload:', preloadPath, error)
+  })
   
   // Janela sempre clicável - click-through desabilitado
   mainWindow.setIgnoreMouseEvents(false) // click-through desabilitado
@@ -61,6 +82,7 @@ async function createWindows() {
   mainWindow.focus()
   mainWindow.show()
   
+
   // Garantir interatividade
   setTimeout(() => {
     mainWindow?.setIgnoreMouseEvents(false)
@@ -93,7 +115,19 @@ ipcMain.handle('overlay:force-interactive', () => {
     win.focus()
   })
 })
-ipcMain.handle('overlay:open-external', (_evt, url: string) => shell.openExternal(url))
+ipcMain.handle('overlay:open-external', (_evt, url: string) => {
+  console.log('🌐 IPC openExternal chamado com URL:', url)
+  console.log('🌐 Event sender:', _evt.sender)
+  try {
+    const result = shell.openExternal(url)
+    console.log('✅ shell.openExternal retornou:', result)
+    console.log('✅ URL aberta com sucesso no navegador')
+    return result
+  } catch (error) {
+    console.error('❌ Erro ao abrir URL:', error)
+    throw error
+  }
+})
 ipcMain.handle('open-devtools', (_evt) => {
   const sender = BrowserWindow.fromWebContents(_evt.sender)
   sender?.webContents.openDevTools()

@@ -90,16 +90,31 @@ export default function HudBar() {
         {/* 5. Botão "Dashboard" - PIXEL PERFECT */}
         <button
           className="event-layer h-[32px] rounded-[16px] bg-white/10 border border-white/18 text-white/90 flex items-center gap-[8px] px-[12px] hover:bg-white/14 active:bg-white/18 focus:outline-none focus:ring-2 focus:ring-white/30"
-          onClick={(e) => {
+          onClick={async (e) => {
             console.log('CLICK Dashboard - INICIANDO')
             e.preventDefault()
             e.stopPropagation()
+            
+            // Verificar se window.overlay está disponível
+            console.log('🔍 window.overlay disponível:', !!window.overlay)
+            console.log('🔍 window.overlay.openExternal disponível:', !!window.overlay?.openExternal)
+            
+            if (!window.overlay) {
+              console.error('❌ window.overlay não está disponível! Preload não carregou.')
+              return
+            }
+            
+            if (!window.overlay.openExternal) {
+              console.error('❌ window.overlay.openExternal não está disponível!')
+              return
+            }
+            
             try {
               console.log('Tentando abrir URL...')
-              window.overlay?.openExternal('http://copilot.psicolmeia.com.br/dashboard')
-              console.log('URL enviada com sucesso')
+              await window.overlay.openExternal('http://copilot.psicolmeia.com.br/dashboard')
+              console.log('✅ URL enviada com sucesso')
             } catch (error) {
-              console.error('Erro ao abrir URL:', error)
+              console.error('❌ Erro ao abrir URL:', error)
             }
           }}
           aria-label="Dashboard"
