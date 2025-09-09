@@ -2,8 +2,15 @@ import { Play, Pause, Stars, BarChart3, Volume2, X } from 'lucide-react'
 import { useEffect, useState, useRef } from 'react'
 import { fmt } from '../lib/utils'
 import { useElapsed } from './useElapsed'
+import { RecordController } from './RecordController'
+import { TranscriptSegment, RecordingState } from './audio/types'
 
-export default function HudBar() {
+interface HudBarProps {
+  onRecordingStateChange?: (state: RecordingState) => void
+  onTranscriptUpdate?: (transcript: TranscriptSegment[]) => void
+}
+
+export default function HudBar({ onRecordingStateChange, onTranscriptUpdate }: HudBarProps = {}) {
   const elapsed = useElapsed()
   const [isRecording, setIsRecording] = useState(false)
   const { reset, start, stop } = useElapsed.actions
@@ -51,18 +58,16 @@ export default function HudBar() {
           style={{ border: '1px solid rgba(255,255,255,0.08)' }}
         />
 
-        {/* 1. Botão Play/Pause circular - PIXEL PERFECT - CACHE CLEARED */}
-        <button
-          className="event-layer w-[32px] h-[32px] rounded-full bg-white/10 border border-white/20 text-white/90 flex items-center justify-center hover:bg-white/15 active:bg-white/20 active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-white/30"
-          onClick={(e) => {
-            e.preventDefault()
-            e.stopPropagation()
-            setIsRecording(v => !v)
-          }}
-          aria-label={isRecording ? 'Pausar' : 'Gravar'}
-        >
-          {isRecording ? <Pause size={16} /> : <Play size={16} />}
-        </button>
+        {/* 1. RecordController - PIXEL PERFECT */}
+        <div className="event-layer">
+          <RecordController
+            onRecordingStateChange={(state) => {
+              setIsRecording(state.isRecording)
+              onRecordingStateChange?.(state)
+            }}
+            onTranscriptUpdate={onTranscriptUpdate || (() => {})}
+          />
+        </div>
 
         {/* 2. Ícone de Ondas Sonoras */}
         <div className="w-[32px] h-[32px] flex items-center justify-center">
