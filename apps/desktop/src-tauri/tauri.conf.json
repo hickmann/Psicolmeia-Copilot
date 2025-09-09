@@ -1,0 +1,27 @@
+{
+  "$schema": "https://schema.tauri.app/config/2.0.0",
+  "productName": "Psicolmeia Overlay",
+  "version": "0.1.0",
+  "identifier": "br.com.psicolmeia.overlay",
+  "build": {
+    "frontendDist": "../../ui/dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "psicolmeia-main",
+        "title": "Psicolmeia Overlay",
+        "width": 900,
+        "height": 600,
+        "resizable": false,
+        "decorations": false,
+        "transparent": true,
+        "alwaysOnTop": true,
+        "visible": true
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self' 'unsafe-inline' blob: data: http://localhost:* https://*;"
+    }
+  }
+}
