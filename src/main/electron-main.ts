@@ -5,8 +5,7 @@ import { fileURLToPath } from 'node:url'
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
-let hud: BrowserWindow | null = null
-let panel: BrowserWindow | null = null
+let mainWindow: BrowserWindow | null = null
 
 function centerX(winWidth: number) {
   const { width: sw } = screen.getPrimaryDisplay().workAreaSize
@@ -14,17 +13,18 @@ function centerX(winWidth: number) {
 }
 
 async function createWindows() {
-  // Medidas pixel-perfect
-  const HUD_W = 520, HUD_H = 78   // largura igual ao panel, altura original
-  const PANEL_W = 520, PANEL_H = 300   // altura flexível; ajuste se quiser
+  // Medidas pixel-perfect - janela única contendo ambos os componentes
+  const HUD_W = 520, HUD_H = 78   // largura e altura do HUD
+  const PANEL_W = 520, PANEL_H = 300   // largura e altura do panel
+  const WINDOW_W = 520, WINDOW_H = HUD_H + PANEL_H + 20  // altura total com espaço transparente de 20px
 
   const devUrl = process.env.VITE_DEV_SERVER_URL || 'http://localhost:5173'
 
-  // --- HUD (topo) ---
-  hud = new BrowserWindow({
-    width: HUD_W,
-    height: HUD_H,
-    x: centerX(HUD_W),
+  // --- JANELA ÚNICA (contendo HUD e Panel) ---
+  mainWindow = new BrowserWindow({
+    width: WINDOW_W,
+    height: WINDOW_H,
+    x: centerX(WINDOW_W),
     y: 16,                                 // 16px do topo
     frame: false,
     transparent: true,
@@ -33,7 +33,7 @@ async function createWindows() {
     hasShadow: true,                       // Reativar sombra para melhor visual
     alwaysOnTop: true,
     focusable: true,
-    skipTaskbar: true,                    // Garantir que aparece na taskbar
+    skipTaskbar: false,                    // Aparece na taskbar
     show: true,                            // Garantir que é visível
     backgroundColor: '#00000000',
     roundedCorners: true,                  // Garantir cantos arredondados
@@ -45,67 +45,28 @@ async function createWindows() {
       webSecurity: false                   // Desabilitar para evitar problemas de CORS
     }
   })
-  if (devUrl) await hud.loadURL(devUrl + '#hud')
-  else await hud.loadFile(path.join(__dirname, 'renderer/index.html'), { hash: 'hud' })
-  // FORÇAR desativação do click-through
-  hud.setIgnoreMouseEvents(false) // click-through desabilitado - janela sempre clicável
+  
+  // Carregar a aplicação unificada
+  if (devUrl) await mainWindow.loadURL(devUrl)
+  else await mainWindow.loadFile(path.join(__dirname, 'renderer/index.html'))
+  
+  // Janela sempre clicável - click-through desabilitado
+  mainWindow.setIgnoreMouseEvents(false) // click-through desabilitado
   
   // Garantir que a janela é totalmente interativa
-  hud.setAlwaysOnTop(true, 'screen-saver')
-  hud.focus()
-  hud.show()
+  mainWindow.setAlwaysOnTop(true, 'screen-saver')
+  mainWindow.focus()
+  mainWindow.show()
   
-  // Forçar interatividade - garantir que não há click-through
+  // Garantir interatividade
   setTimeout(() => {
-    hud?.setIgnoreMouseEvents(false)
-    hud?.focus()
-  }, 100)
-
-  // --- PANEL (abaixo do HUD) ---
-  panel = new BrowserWindow({
-    width: PANEL_W,
-    height: PANEL_H,
-    x: centerX(PANEL_W),
-    y: 16 + HUD_H + 12,                    // 12px de gap após HUD
-    frame: false,
-    transparent: true,
-    resizable: false,
-    movable: false,                         // Habilitado para permitir interação
-    hasShadow: false,                       // Reativar sombra para melhor visual
-    alwaysOnTop: true,
-    focusable: true,
-    skipTaskbar: false,                    // Garantir que aparece na taskbar
-    show: true,                            // Garantir que é visível
-    backgroundColor: '#00000000',
-    roundedCorners: true,                  // Garantir cantos arredondados
-    webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
-      contextIsolation: true, 
-      nodeIntegration: false, 
-      sandbox: false,
-      webSecurity: false                   // Desabilitar para evitar problemas de CORS
-    }
-  })
-  if (devUrl) await panel.loadURL(devUrl + '#panel')
-  else await panel.loadFile(path.join(__dirname, 'renderer/index.html'), { hash: 'panel' })
-  // FORÇAR desativação do click-through
-  panel.setIgnoreMouseEvents(false) // click-through desabilitado - janela sempre clicável
-  
-  // Garantir que a janela é totalmente interativa
-  panel.setAlwaysOnTop(true, 'screen-saver')
-  panel.focus()
-  panel.show()
-  
-  // Forçar interatividade - garantir que não há click-through
-  setTimeout(() => {
-    panel?.setIgnoreMouseEvents(false)
-    panel?.focus()
+    mainWindow?.setIgnoreMouseEvents(false)
+    mainWindow?.focus()
   }, 100)
 
   // Recentrar ao trocar de monitor/resolução
   screen.on('display-metrics-changed', () => {
-    if (hud) hud.setPosition(centerX(HUD_W), 16)
-    if (panel) panel.setPosition(centerX(PANEL_W), 16 + HUD_H + 12)
+    if (mainWindow) mainWindow.setPosition(centerX(WINDOW_W), 16)
   })
 }
 
@@ -146,9 +107,12 @@ ipcMain.handle('overlay:close-app', () => {
       win.close()
     })
     
-    // Depois fechar o app
-    app.quit()
-    console.log('app.quit() executado')
+    // Aguardar um pouco antes de fechar o app
+    setTimeout(() => {
+      app.quit()
+      console.log('app.quit() executado')
+    }, 100)
+    
   } catch (error) {
     console.error('Erro ao fechar app:', error)
     // Forçar fechamento

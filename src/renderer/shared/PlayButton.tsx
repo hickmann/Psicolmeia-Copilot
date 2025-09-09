@@ -4,8 +4,8 @@ import { useElapsed } from './useElapsed'
 
 export default function PlayButton(){
   const [rec, setRec] = useState(false)
-  const { reset, start, stop } = useElapsed.actions()
-  const t = useRef<number|undefined>()
+  const { reset, start, stop } = useElapsed.actions
+  const t = useRef<number|undefined>(undefined)
 
   useEffect(()=>{
     if(rec){ start() } else { stop(); reset() }

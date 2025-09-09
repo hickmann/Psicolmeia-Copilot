@@ -25,5 +25,11 @@ export const useElapsedBase = create<Store>((set,get)=>({
 }))
 export const useElapsed = Object.assign(
   () => useElapsedBase(s=>s.elapsed),
-  { actions: () => useElapsedBase(s=>s.actions) }
+  { 
+    actions: {
+      start: () => useElapsedBase.getState().actions.start(),
+      stop: () => useElapsedBase.getState().actions.stop(),
+      reset: () => useElapsedBase.getState().actions.reset()
+    }
+  }
 )

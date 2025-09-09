@@ -6,13 +6,13 @@ import { useElapsed } from './useElapsed'
 export default function HudBar() {
   const elapsed = useElapsed()
   const [isRecording, setIsRecording] = useState(false)
-  const { reset, start, stop } = useElapsed.actions()
-  const timerRef = useRef<number | undefined>()
+  const { reset, start, stop } = useElapsed.actions
+  const timerRef = useRef<number | undefined>(undefined)
 
-  // Click-through removido - janela sempre clicável
+  // Janela sempre clicável - click-through removido
   useEffect(() => {
-    // Forçar interatividade quando o componente for montado
-    window.overlay?.forceInteractive()
+    // Garantir que a janela é sempre interativa
+    window.overlay?.setIgnore(false)
   }, [])
 
   useEffect(() => {
@@ -118,7 +118,9 @@ export default function HudBar() {
             border: '1px solid #dc2626',
             borderRadius: '12px',
             boxShadow: '0 0 0 2px rgba(239, 68, 68, 0.3)',
-            pointerEvents: 'auto'
+            pointerEvents: 'auto',
+            zIndex: 9999,
+            position: 'relative'
           }}
           onMouseEnter={(e) => {
             // Hover effect
@@ -130,7 +132,6 @@ export default function HudBar() {
           }}
           onClick={async (e) => {
             console.log('CLICK Close button - FECHANDO APP')
-            alert('Botão clicado! Fechando app...')
             e.preventDefault()
             e.stopPropagation()
             
