@@ -12,6 +12,7 @@
     "start": "electron ."
   },
   "dependencies": {
+    "@ricky0123/vad-react": "^0.0.33",
     "electron": "^31.3.0",
     "lucide-react": "^0.460.0",
     "onnxruntime-web": "^1.22.0",

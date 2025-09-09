@@ -14,4 +14,13 @@ export default defineConfig({
     outDir: 'dist/renderer',
     sourcemap: true
   },
+  optimizeDeps: {
+    exclude: [
+      '@ricky0123/vad-react',
+      'onnxruntime-web'
+    ]
+  },
+  define: {
+    global: 'globalThis'
+  }
 })
