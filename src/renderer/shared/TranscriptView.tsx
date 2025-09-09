@@ -8,8 +8,20 @@ interface TranscriptViewProps {
 
 export function TranscriptView({ segments, isRecording }: TranscriptViewProps) {
   console.log('🖥️ TranscriptView: Renderizando com', segments.length, 'segmentos', segments)
-  const formatTime = (ms: number) => {
-    const date = new Date(ms)
+  const formatTime = (timestamp: number) => {
+    // Verificar se o timestamp é válido
+    if (!timestamp || isNaN(timestamp) || timestamp <= 0) {
+      return '--:--:--'
+    }
+    
+    // timestamp está em segundos, converter para milissegundos
+    const date = new Date(timestamp * 1000)
+    
+    // Verificar se a data é válida
+    if (isNaN(date.getTime())) {
+      return '--:--:--'
+    }
+    
     return date.toLocaleTimeString('pt-BR', { 
       hour12: false,
       hour: '2-digit',

@@ -133,25 +133,27 @@ export function SimpleVADController({ onTranscriptUpdate, onRecordingStateChange
   
   // Processar segmento de áudio gravado
   const processAudioSegment = useCallback(async (audioBlob: Blob) => {
-    const segmentId = `segment-${++segmentCounterRef.current}`
+    const segmentNumber = ++segmentCounterRef.current
     const speechEndTime = Date.now()
     const duration = speechEndTime - speechStartTimeRef.current
     
     // Só processar se tiver duração mínima
     if (duration < MIN_SPEECH_DURATION) {
-      console.log(`⚠️ Segmento ${segmentId} muito curto (${duration}ms), ignorando`)
+      console.log(`⚠️ Segmento ${segmentNumber} muito curto (${duration}ms), ignorando`)
       return
     }
     
-    console.log(`🎯 Processando segmento ${segmentId}: ${audioBlob.size} bytes, ${duration}ms`)
+    console.log(`🎯 Processando segmento ${segmentNumber}: ${audioBlob.size} bytes, ${duration}ms`)
     
-    // Adicionar segmento partial
+    // Adicionar segmento partial com ID único
+    const segmentId = `vad-${segmentNumber}-${Date.now()}`
     const partialSegment: TranscriptSegment = {
       start: speechStartTimeRef.current / 1000,
       end: speechEndTime / 1000,
       speaker: 'TERAPEUTA',
       text: '(transcrevendo...)',
-      status: 'partial'
+      status: 'partial',
+      id: segmentId
     }
     
     setSegments(prev => {
@@ -175,16 +177,21 @@ export function SimpleVADController({ onTranscriptUpdate, onRecordingStateChange
         
         // Escutar eventos de transcrição
         const handleTranscriptUpdate = (event: CustomEvent) => {
-          const updatedSegment = event.detail as TranscriptSegment
+          const eventData = event.detail
           
-          // Verificar se é o nosso segmento
-          if (Math.abs(updatedSegment.start - partialSegment.start) < 0.1) {
+          // O provider agora envia { segment, allSegments }
+          if (eventData.allSegments) {
+            // Usar todos os segmentos do provider para manter histórico completo
+            setSegments(eventData.allSegments)
+            setTimeout(() => onTranscriptUpdate(eventData.allSegments), 0)
+          } else {
+            // Fallback para compatibilidade com providers antigos
+            const updatedSegment = eventData as TranscriptSegment
             setSegments(prev => {
-              const updated = prev.map(seg => 
-                seg.start === partialSegment.start && seg.status === 'partial'
-                  ? updatedSegment
-                  : seg
-              )
+              const updated = updatedSegment.id 
+                ? prev.map(seg => seg.id === updatedSegment.id ? updatedSegment : seg)
+                : [...prev.filter(seg => seg.id !== partialSegment.id), updatedSegment]
+              
               setTimeout(() => onTranscriptUpdate(updated), 0)
               return updated
             })
@@ -197,7 +204,7 @@ export function SimpleVADController({ onTranscriptUpdate, onRecordingStateChange
         // Remover listener após um tempo
         setTimeout(() => {
           window.removeEventListener('transcript-update', handleTranscriptUpdate as any)
-        }, 5000)
+        }, 10000) // Aumentado para 10s para dar mais tempo
       }
       
     } catch (error) {
@@ -208,8 +215,9 @@ export function SimpleVADController({ onTranscriptUpdate, onRecordingStateChange
         start: speechStartTimeRef.current / 1000,
         end: speechEndTime / 1000,
         speaker: 'TERAPEUTA',
-        text: `Segmento ${segmentCounterRef.current} - ${duration}ms de fala detectada`,
-        status: 'final'
+        text: `Segmento ${segmentNumber} - ${duration}ms de fala detectada`,
+        status: 'final',
+        id: segmentId
       }
       
       setSegments(prev => {
@@ -291,17 +299,21 @@ export function SimpleVADController({ onTranscriptUpdate, onRecordingStateChange
         systemAudioAvailable: false
       })
       
-      // Adicionar segmento inicial
+      // Adicionar segmento inicial (manter histórico anterior)
       const startSegment: TranscriptSegment = {
         start: Date.now() / 1000,
         end: Date.now() / 1000,
         speaker: 'TERAPEUTA',
         text: '[🔴 VAD ativo - fale para começar a gravar]',
-        status: 'final'
+        status: 'final',
+        id: `vad-start-${Date.now()}`
       }
       
-      setSegments([startSegment])
-      setTimeout(() => onTranscriptUpdate([startSegment]), 0)
+      setSegments(prev => {
+        const updated = [...prev, startSegment]
+        setTimeout(() => onTranscriptUpdate(updated), 0)
+        return updated
+      })
       
       console.log('✅ Sistema VAD ativo!')
       
@@ -330,14 +342,18 @@ export function SimpleVADController({ onTranscriptUpdate, onRecordingStateChange
       }
       
       // Fechar contexto de áudio
-      if (audioContextRef.current) {
+      if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
         await audioContextRef.current.close()
         audioContextRef.current = null
       }
       
       // Parar stream
       if (mediaStreamRef.current) {
-        mediaStreamRef.current.getTracks().forEach(track => track.stop())
+        mediaStreamRef.current.getTracks().forEach(track => {
+          if (track.readyState !== 'ended') {
+            track.stop()
+          }
+        })
         mediaStreamRef.current = null
       }
       
@@ -362,7 +378,8 @@ export function SimpleVADController({ onTranscriptUpdate, onRecordingStateChange
         end: Date.now() / 1000,
         speaker: 'TERAPEUTA',
         text: `[⏹️ VAD parado - ${segmentCounterRef.current} segmentos processados]`,
-        status: 'final'
+        status: 'final',
+        id: `vad-end-${Date.now()}`
       }
       
       setSegments(prev => {
@@ -385,11 +402,15 @@ export function SimpleVADController({ onTranscriptUpdate, onRecordingStateChange
       if (vadIntervalRef.current) {
         clearInterval(vadIntervalRef.current)
       }
-      if (audioContextRef.current) {
+      if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
         audioContextRef.current.close()
       }
       if (mediaStreamRef.current) {
-        mediaStreamRef.current.getTracks().forEach(track => track.stop())
+        mediaStreamRef.current.getTracks().forEach(track => {
+          if (track.readyState !== 'ended') {
+            track.stop()
+          }
+        })
       }
     }
   }, [])

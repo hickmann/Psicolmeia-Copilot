@@ -16,6 +16,7 @@ export interface TranscriptSegment {
   speaker: Speaker
   text: string
   status: SegmentStatus
+  id?: string // ID único para identificação do segmento
 }
 
 export interface AudioStreams {

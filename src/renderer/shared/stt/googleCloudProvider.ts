@@ -34,7 +34,7 @@ export class GoogleCloudSttProvider implements GoogleCloudSttProvider {
   }
 
   async pushChunk(segment: { audioData: ArrayBuffer; start: number; end: number; speaker: string }): Promise<void> {
-    const segmentId = `${segment.start}-${segment.end}`
+    const segmentId = `segment-${this.segmentCounter + 1}-${Date.now()}`
     
     if (this.processingSegments.has(segmentId)) {
       return
@@ -43,20 +43,25 @@ export class GoogleCloudSttProvider implements GoogleCloudSttProvider {
     this.processingSegments.add(segmentId)
     this.segmentCounter++
     
-    // Criar segmento parcial
+    // Usar timestamps reais em segundos desde epoch
+    const startTime = segment.start
+    const endTime = segment.end
+    
+    // Criar segmento parcial com ID único
     const partialSegment: TranscriptSegment = {
-      start: segment.start,
-      end: segment.end,
+      start: startTime,
+      end: endTime,
       speaker: segment.speaker as any,
       text: `[Transcrevendo via Google Cloud... ${this.segmentCounter}]`,
-      status: 'partial'
+      status: 'partial',
+      id: segmentId // Adicionar ID único para identificação
     }
 
     this.segments.push(partialSegment)
     
     // Notificar sobre o segmento parcial
     window.dispatchEvent(new CustomEvent('transcript-update', { 
-      detail: partialSegment 
+      detail: { segment: partialSegment, allSegments: [...this.segments] }
     }))
 
     try {
@@ -66,54 +71,121 @@ export class GoogleCloudSttProvider implements GoogleCloudSttProvider {
       // Chamar API do Google Cloud Speech-to-Text
       const transcription = await this.transcribeWithGoogleCloud(audioBase64)
       
+      if (transcription === null) {
+        // Sem transcrição detectada - remover segmento parcial
+        console.log('⚠️ Sem transcrição detectada, removendo segmento')
+        
+        const index = this.segments.findIndex(seg => seg.id === segmentId)
+        if (index >= 0) {
+          this.segments.splice(index, 1)
+        }
+        
+        // Notificar sobre a remoção
+        window.dispatchEvent(new CustomEvent('transcript-update', { 
+          detail: { segment: null, allSegments: [...this.segments] }
+        }))
+        
+        return // Sair sem criar segmento final
+      }
+      
       // Atualizar segmento com resultado final
       const finalSegment: TranscriptSegment = {
-        start: segment.start,
-        end: segment.end,
+        start: startTime,
+        end: endTime,
         speaker: segment.speaker as any,
         text: transcription,
-        status: 'final'
+        status: 'final',
+        id: segmentId
       }
 
-      // Substituir segmento parcial pelo final
+      // Substituir segmento parcial pelo final usando ID
       const index = this.segments.findIndex(seg => 
-        seg.start === segment.start && seg.end === segment.end
+        seg.id === segmentId
       )
       
       if (index >= 0) {
         this.segments[index] = finalSegment
       }
 
-      // Notificar sobre o segmento final
+      // Notificar sobre o segmento final com todos os segmentos
       window.dispatchEvent(new CustomEvent('transcript-update', { 
-        detail: finalSegment 
+        detail: { segment: finalSegment, allSegments: [...this.segments] }
       }))
 
     } catch (error) {
       console.error('❌ Erro no Google Cloud STT:', error)
       
-      // Em caso de erro, marcar como final com mensagem de erro
-      const errorSegment: TranscriptSegment = {
-        start: segment.start,
-        end: segment.end,
-        speaker: segment.speaker as any,
-        text: `[Erro Google Cloud: ${error instanceof Error ? error.message : 'Erro desconhecido'}]`,
-        status: 'final'
-      }
-
-      const index = this.segments.findIndex(seg => 
-        seg.start === segment.start && seg.end === segment.end
-      )
+      // Em caso de erro, tentar novamente mantendo o segmento parcial
+      console.log('🔄 Tentando novamente em 2 segundos...')
       
-      if (index >= 0) {
-        this.segments[index] = errorSegment
-      }
+      // Aguardar 2 segundos e tentar novamente
+      setTimeout(async () => {
+        try {
+          console.log('🔄 Tentativa de reprocessamento do segmento')
+          const retryTranscription = await this.transcribeWithGoogleCloud(audioBase64)
+          
+          if (retryTranscription === null) {
+            // Ainda sem transcrição, remover segmento
+            const index = this.segments.findIndex(seg => seg.id === segmentId)
+            if (index >= 0) {
+              this.segments.splice(index, 1)
+            }
+            
+            window.dispatchEvent(new CustomEvent('transcript-update', { 
+              detail: { segment: null, allSegments: [...this.segments] }
+            }))
+          } else {
+            // Sucesso na segunda tentativa
+            const finalSegment: TranscriptSegment = {
+              start: startTime,
+              end: endTime,
+              speaker: segment.speaker as any,
+              text: retryTranscription,
+              status: 'final',
+              id: segmentId
+            }
 
-      window.dispatchEvent(new CustomEvent('transcript-update', { 
-        detail: errorSegment 
-      }))
+            const index = this.segments.findIndex(seg => seg.id === segmentId)
+            if (index >= 0) {
+              this.segments[index] = finalSegment
+            }
+
+            window.dispatchEvent(new CustomEvent('transcript-update', { 
+              detail: { segment: finalSegment, allSegments: [...this.segments] }
+            }))
+          }
+        } catch (retryError) {
+          console.error('❌ Erro na segunda tentativa:', retryError)
+          
+          // Após falhar duas vezes, marcar como erro mas manter histórico
+          const errorSegment: TranscriptSegment = {
+            start: startTime,
+            end: endTime,
+            speaker: segment.speaker as any,
+            text: '[Erro na transcrição - tentativas esgotadas]',
+            status: 'final',
+            id: segmentId
+          }
+
+          const index = this.segments.findIndex(seg => seg.id === segmentId)
+          if (index >= 0) {
+            this.segments[index] = errorSegment
+          }
+
+          window.dispatchEvent(new CustomEvent('transcript-update', { 
+            detail: { segment: errorSegment, allSegments: [...this.segments] }
+          }))
+        } finally {
+          this.processingSegments.delete(segmentId)
+        }
+      }, 2000)
+      
+      return // Não remover da fila ainda, aguardar retry
     } finally {
-      this.processingSegments.delete(segmentId)
+      // Só remover da fila se não houver erro (retry vai gerenciar)
+      if (!this.processingSegments.has(segmentId)) {
+        this.processingSegments.delete(segmentId)
+      }
     }
   }
 
@@ -145,7 +217,7 @@ export class GoogleCloudSttProvider implements GoogleCloudSttProvider {
     })
   }
 
-  private async transcribeWithGoogleCloud(audioBase64: string): Promise<string> {
+  private async transcribeWithGoogleCloud(audioBase64: string): Promise<string | null> {
     const GOOGLE_STT_ENDPOINT = 'https://speech.googleapis.com/v1/speech:recognize'
     
     const requestBody = {
@@ -186,13 +258,12 @@ export class GoogleCloudSttProvider implements GoogleCloudSttProvider {
     if (result.results && result.results.length > 0) {
       const alternative = result.results[0].alternatives?.[0]
       if (alternative?.transcript) {
-        const confidence = alternative.confidence || 0
-        const confidencePercent = Math.round(confidence * 100)
-        return `${alternative.transcript.trim()} (${confidencePercent}%)`
+        return alternative.transcript.trim()
       }
     }
 
-    return '[Sem transcrição detectada]'
+    // Retornar null quando não há transcrição para não criar segmento
+    return null
   }
 }
 
