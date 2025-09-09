@@ -16,7 +16,7 @@ async function createWindows() {
   // Medidas pixel-perfect - janela única contendo ambos os componentes
   const HUD_W = 520, HUD_H = 78   // largura e altura do HUD
   const PANEL_W = 520, PANEL_H = 300   // largura e altura do panel
-  const WINDOW_W = 520, WINDOW_H = HUD_H + PANEL_H + 20  // altura total com espaço transparente de 20px
+  const WINDOW_W = 600, WINDOW_H = HUD_H + PANEL_H + 100  // altura total com mais espaço para evitar cortes
 
   const devUrl = process.env.VITE_DEV_SERVER_URL || 'http://localhost:5173'
 
