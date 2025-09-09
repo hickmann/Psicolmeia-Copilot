@@ -7,6 +7,7 @@ interface TranscriptViewProps {
 }
 
 export function TranscriptView({ segments, isRecording }: TranscriptViewProps) {
+  console.log('🖥️ TranscriptView: Renderizando com', segments.length, 'segmentos', segments)
   const formatTime = (ms: number) => {
     const date = new Date(ms)
     return date.toLocaleTimeString('pt-BR', { 

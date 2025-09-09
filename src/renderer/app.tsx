@@ -12,6 +12,7 @@ export default function App() {
   }
 
   const handleTranscriptUpdate = (newTranscript: TranscriptSegment[]) => {
+    console.log('📝 App: Recebendo transcript com', newTranscript.length, 'segmentos')
     setTranscript(newTranscript)
   }
 

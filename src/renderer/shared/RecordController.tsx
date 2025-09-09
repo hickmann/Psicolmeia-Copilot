@@ -39,17 +39,26 @@ export function RecordController({ onRecordingStateChange, onTranscriptUpdate }:
 
   function handleSegmentDetected(segment: AudioSegment) {
     console.log('🎯 Segmento detectado:', segment)
+    console.log('🎯 Duração do segmento:', segment.end - segment.start, 'ms')
+    console.log('🎯 Fonte:', segment.source, 'Falante inicial:', segment.speaker)
     
     // Usar detector de falantes desconhecidos
     const finalSpeaker = unknownDetectorRef.current.getSpeakerAt(segment.start)
     segment.speaker = finalSpeaker
     
+    console.log('🎯 Falante final:', finalSpeaker)
+    
     // Enviar para STT
+    console.log('🎯 Enviando para STT...')
     sttProviderRef.current.pushChunk({
       audioData: segment.audioData || new ArrayBuffer(0),
       start: segment.start,
       end: segment.end,
       speaker: segment.speaker
+    }).then(() => {
+      console.log('✅ Segmento enviado para STT com sucesso')
+    }).catch((error) => {
+      console.error('❌ Erro ao enviar para STT:', error)
     })
   }
 
@@ -94,6 +103,7 @@ export function RecordController({ onRecordingStateChange, onTranscriptUpdate }:
       recorderRef.current.start(streams)
       
       // Iniciar STT provider
+      console.log('🎤 Iniciando STT provider...')
       await sttProviderRef.current.start()
       
       // Limpar detector de falantes desconhecidos
@@ -111,9 +121,19 @@ export function RecordController({ onRecordingStateChange, onTranscriptUpdate }:
       onRecordingStateChange(newState)
       
       console.log('✅ Gravação iniciada com sucesso')
+      console.log('🎤 VAD do MIC status:', micVad.isListening, 'Falando:', micVad.isSpeechDetected)
+      console.log('🔊 VAD do SYSTEM status:', systemVad.isListening, 'Falando:', systemVad.isSpeechDetected)
+      
       if (!systemAudioAvailable) {
         console.log('⚠️ Áudio do sistema indisponível — gravando apenas microfone')
       }
+      
+      // Aguardar um pouco para o VAD se inicializar
+      setTimeout(() => {
+        console.log('🔍 Status VAD após 2s:')
+        console.log('🎤 MIC VAD:', micVad.isListening, 'Erro:', micVad.error)
+        console.log('🔊 SYSTEM VAD:', systemVad.isListening, 'Erro:', systemVad.error)
+      }, 2000)
       
     } catch (error) {
       console.error('❌ Erro ao iniciar gravação:', error)
@@ -199,58 +219,13 @@ export function RecordController({ onRecordingStateChange, onTranscriptUpdate }:
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      {/* Controles de gravação */}
-      <div className="flex items-center gap-3">
-        <button
-          onClick={recordingState.isRecording ? stopRecording : startRecording}
-          disabled={recordingState.isProcessing}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
-            recordingState.isRecording
-              ? 'bg-red-500 hover:bg-red-600 text-white'
-              : 'bg-green-500 hover:bg-green-600 text-white'
-          } ${recordingState.isProcessing ? 'opacity-50 cursor-not-allowed' : ''}`}
-        >
-          {recordingState.isRecording ? (
-            <>
-              <Square className="w-4 h-4" />
-              Parar
-            </>
-          ) : (
-            <>
-              <Play className="w-4 h-4" />
-              Gravar
-            </>
-          )}
-        </button>
-      </div>
-      
-      {/* Status de áudio */}
-      <div className="flex items-center gap-4 text-sm">
-        <div className="flex items-center gap-2">
-          {micVad.isListening ? (
-            <Mic className="w-4 h-4 text-green-500" />
-          ) : (
-            <MicOff className="w-4 h-4 text-gray-400" />
-          )}
-          <span>MIC</span>
-        </div>
-        
-        <div className="flex items-center gap-2">
-          {recordingState.systemAudioAvailable ? (
-            <Volume2 className="w-4 h-4 text-green-500" />
-          ) : (
-            <VolumeX className="w-4 h-4 text-gray-400" />
-          )}
-          <span>SYSTEM</span>
-        </div>
-        
-        {recordingState.systemAudioError && (
-          <span className="text-orange-600 text-xs">
-            {recordingState.systemAudioError}
-          </span>
-        )}
-      </div>
-    </div>
+    <button
+      onClick={recordingState.isRecording ? stopRecording : startRecording}
+      disabled={recordingState.isProcessing}
+      className="event-layer w-[32px] h-[32px] rounded-full bg-white/10 border border-white/20 text-white/90 flex items-center justify-center hover:bg-white/15 active:bg-white/20 active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-white/30"
+      aria-label={recordingState.isRecording ? 'Parar' : 'Gravar'}
+    >
+      {recordingState.isRecording ? <Square size={16} /> : <Play size={16} />}
+    </button>
   )
 }

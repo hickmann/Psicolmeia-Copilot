@@ -2,7 +2,7 @@ import { Play, Pause, Stars, BarChart3, Volume2, X } from 'lucide-react'
 import { useEffect, useState, useRef } from 'react'
 import { fmt } from '../lib/utils'
 import { useElapsed } from './useElapsed'
-import { RecordController } from './RecordController'
+import { VADSTTController } from './VADSTTController'
 import { TranscriptSegment, RecordingState } from './audio/types'
 
 interface HudBarProps {
@@ -58,16 +58,14 @@ export default function HudBar({ onRecordingStateChange, onTranscriptUpdate }: H
           style={{ border: '1px solid rgba(255,255,255,0.08)' }}
         />
 
-        {/* 1. RecordController - PIXEL PERFECT */}
-        <div className="event-layer">
-          <RecordController
-            onRecordingStateChange={(state) => {
-              setIsRecording(state.isRecording)
-              onRecordingStateChange?.(state)
-            }}
-            onTranscriptUpdate={onTranscriptUpdate || (() => {})}
-          />
-        </div>
+        {/* 1. VADSTTController - PIXEL PERFECT */}
+        <VADSTTController
+          onTranscriptUpdate={(segments) => {
+            console.log('📝 HudBar: Recebendo segmentos do VAD STT:', segments.length)
+            onTranscriptUpdate?.(segments)
+          }}
+          onRecordingStateChange={onRecordingStateChange}
+        />
 
         {/* 2. Ícone de Ondas Sonoras */}
         <div className="w-[32px] h-[32px] flex items-center justify-center">

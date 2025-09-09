@@ -9,9 +9,9 @@ function centerX(winWidth: number) {
   return Math.round((sw - winWidth) / 2)
 }
 
-function centerY(winHeight: number) {
-  const { height: sh } = electronScreen.getPrimaryDisplay().workAreaSize
-  return Math.round((sh - winHeight) / 2)
+function topY(winHeight: number) {
+  // Posicionar no topo da tela com 20px de distância
+  return 20 // 20px do topo
 }
 
 function createWindow() {
@@ -26,7 +26,7 @@ function createWindow() {
     width: 1200,
     height: 800,
     x: centerX(1200),
-    y: centerY(800),
+    y: topY(800),
     frame: false,
     transparent: true,
     alwaysOnTop: true,
