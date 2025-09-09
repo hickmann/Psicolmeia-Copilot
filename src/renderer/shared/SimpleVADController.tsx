@@ -1,6 +1,7 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react'
 import { Mic, Square } from 'lucide-react'
 import { TranscriptSegment, RecordingState } from './audio/types'
+import { createGoogleCloudSttProvider } from './stt/googleCloudProvider'
 
 interface SimpleVADControllerProps {
   onTranscriptUpdate: (segments: TranscriptSegment[]) => void
@@ -23,15 +24,17 @@ export function SimpleVADController({ onTranscriptUpdate, onRecordingStateChange
   const segmentCounterRef = useRef(0)
   const speechStartTimeRef = useRef<number>(0)
   const vadIntervalRef = useRef<NodeJS.Timeout | null>(null)
+  const sttProviderRef = useRef<any>(null)
   
   // Configurações VAD
-  const SILENCE_THRESHOLD = 0.05 // Threshold para detectar silêncio
-  const SPEECH_THRESHOLD = 0.08  // Threshold para detectar fala
+  const SILENCE_THRESHOLD = 0.03 // Threshold para detectar silêncio
+  const SPEECH_THRESHOLD = 0.10  // Threshold para detectar fala
   const MIN_SPEECH_DURATION = 500 // Mínimo de 500ms de fala
   const MAX_SILENCE_DURATION = 1000 // Máximo de 1s de silêncio para parar
   
   const silenceCounterRef = useRef(0)
   const speechCounterRef = useRef(0)
+  const isSpeakingRef = useRef(false) // Ref para controle imediato
   
   // Função para analisar áudio e detectar fala
   const analyzeAudio = useCallback(() => {
@@ -50,7 +53,7 @@ export function SimpleVADController({ onTranscriptUpdate, onRecordingStateChange
     
     // Log periódico para debug (a cada 100 ciclos = ~2s)
     if (Math.random() < 0.01) {
-      console.log(`📊 VAD Debug: RMS=${rms.toFixed(4)}, isSpeaking=${isSpeaking}, speech=${speechCounterRef.current}, silence=${silenceCounterRef.current}`)
+      console.log(`📊 VAD Debug: RMS=${rms.toFixed(4)}, isSpeaking=${isSpeakingRef.current}, speech=${speechCounterRef.current}, silence=${silenceCounterRef.current}`)
     }
     
     // Detectar fala ou silêncio
@@ -59,8 +62,9 @@ export function SimpleVADController({ onTranscriptUpdate, onRecordingStateChange
       silenceCounterRef.current = 0
       
       // Iniciar gravação se não estiver falando ainda
-      if (!isSpeaking && speechCounterRef.current > 5) { // ~100ms de fala consistente
+      if (!isSpeakingRef.current && speechCounterRef.current > 5) { // ~100ms de fala consistente
         console.log('🎤 VAD: Início da fala detectado (RMS:', rms.toFixed(4), ')')
+        isSpeakingRef.current = true
         setIsSpeaking(true)
         startSpeechRecording()
       }
@@ -69,20 +73,22 @@ export function SimpleVADController({ onTranscriptUpdate, onRecordingStateChange
       speechCounterRef.current = 0
       
       // Parar gravação se estiver falando e houver silêncio suficiente
-      if (isSpeaking && silenceCounterRef.current > 25) { // ~500ms de silêncio
+      if (isSpeakingRef.current && silenceCounterRef.current > 25) { // ~500ms de silêncio
         console.log('🎤 VAD: Fim da fala detectado (RMS:', rms.toFixed(4), ', silêncio:', silenceCounterRef.current, ')')
+        isSpeakingRef.current = false
         setIsSpeaking(false)
         stopSpeechRecording()
       }
     } else {
       // Zona intermediária - reduzir contadores gradualmente
-      if (isSpeaking) {
+      if (isSpeakingRef.current) {
         silenceCounterRef.current++
         speechCounterRef.current = Math.max(0, speechCounterRef.current - 1)
         
         // Se estiver na zona intermediária por muito tempo, considerar como silêncio
         if (silenceCounterRef.current > 25) { // ~500ms de zona intermediária
           console.log('🎤 VAD: Fim da fala detectado (zona intermediária, RMS:', rms.toFixed(4), ')')
+          isSpeakingRef.current = false
           setIsSpeaking(false)
           stopSpeechRecording()
         }
@@ -115,6 +121,11 @@ export function SimpleVADController({ onTranscriptUpdate, onRecordingStateChange
     try {
       mediaRecorderRef.current.stop()
       console.log('⏹️ Parando gravação do segmento de fala')
+      
+      // Resetar contadores após parar a gravação
+      speechCounterRef.current = 0
+      silenceCounterRef.current = 0
+      
     } catch (error) {
       console.error('❌ Erro ao parar gravação do segmento:', error)
     }
@@ -149,9 +160,51 @@ export function SimpleVADController({ onTranscriptUpdate, onRecordingStateChange
       return updated
     })
     
-    // Simular STT (substitua por integração real)
-    setTimeout(() => {
-      const finalSegment: TranscriptSegment = {
+    try {
+      // Converter Blob para ArrayBuffer
+      const audioBuffer = await audioBlob.arrayBuffer()
+      
+      // Usar STT Provider para transcrição real
+      if (sttProviderRef.current) {
+        await sttProviderRef.current.pushChunk({
+          audioData: audioBuffer,
+          start: speechStartTimeRef.current / 1000,
+          end: speechEndTime / 1000,
+          speaker: 'TERAPEUTA'
+        })
+        
+        // Escutar eventos de transcrição
+        const handleTranscriptUpdate = (event: CustomEvent) => {
+          const updatedSegment = event.detail as TranscriptSegment
+          
+          // Verificar se é o nosso segmento
+          if (Math.abs(updatedSegment.start - partialSegment.start) < 0.1) {
+            setSegments(prev => {
+              const updated = prev.map(seg => 
+                seg.start === partialSegment.start && seg.status === 'partial'
+                  ? updatedSegment
+                  : seg
+              )
+              setTimeout(() => onTranscriptUpdate(updated), 0)
+              return updated
+            })
+          }
+        }
+        
+        // Adicionar listener temporário
+        window.addEventListener('transcript-update', handleTranscriptUpdate as any)
+        
+        // Remover listener após um tempo
+        setTimeout(() => {
+          window.removeEventListener('transcript-update', handleTranscriptUpdate as any)
+        }, 5000)
+      }
+      
+    } catch (error) {
+      console.error('❌ Erro ao processar áudio:', error)
+      
+      // Fallback para simulação se der erro
+      const fallbackSegment: TranscriptSegment = {
         start: speechStartTimeRef.current / 1000,
         end: speechEndTime / 1000,
         speaker: 'TERAPEUTA',
@@ -162,13 +215,13 @@ export function SimpleVADController({ onTranscriptUpdate, onRecordingStateChange
       setSegments(prev => {
         const updated = prev.map(seg => 
           seg.start === partialSegment.start && seg.status === 'partial'
-            ? finalSegment
+            ? fallbackSegment
             : seg
         )
         setTimeout(() => onTranscriptUpdate(updated), 0)
         return updated
       })
-    }, 2000)
+    }
     
   }, [onTranscriptUpdate])
   
@@ -177,6 +230,11 @@ export function SimpleVADController({ onTranscriptUpdate, onRecordingStateChange
     try {
       console.log('🔴 Iniciando sistema VAD...')
       setIsProcessing(true)
+      
+      // Inicializar Google Cloud STT Provider
+      sttProviderRef.current = createGoogleCloudSttProvider()
+      await sttProviderRef.current.start()
+      console.log('☁️ Google Cloud STT Provider inicializado')
       
       // Obter stream do microfone
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -266,7 +324,8 @@ export function SimpleVADController({ onTranscriptUpdate, onRecordingStateChange
       }
       
       // Parar gravação se estiver ativa
-      if (isSpeaking) {
+      if (isSpeakingRef.current) {
+        isSpeakingRef.current = false
         stopSpeechRecording()
       }
       
@@ -285,6 +344,10 @@ export function SimpleVADController({ onTranscriptUpdate, onRecordingStateChange
       setIsRecording(false)
       setIsSpeaking(false)
       setIsProcessing(false)
+      
+      // Limpar Google Cloud STT Provider
+      sttProviderRef.current = null
+      console.log('☁️ Google Cloud STT Provider limpo')
       
       // Notificar estado
       onRecordingStateChange?.({
