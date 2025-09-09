@@ -29,9 +29,7 @@ export default function HudBar() {
     <div
       className="w-full h-full flex items-center justify-center"
       style={{
-        background: 'rgba(0,0,0,0.2)',
-        backdropFilter: 'blur(40px) saturate(200%)',
-        WebkitBackdropFilter: 'blur(40px) saturate(200%)',
+        background: 'transparent',
         pointerEvents: 'auto'
       }}
     >
@@ -43,7 +41,7 @@ export default function HudBar() {
           border: '1px solid rgba(255,255,255,0.25)',
           backdropFilter: 'blur(50px) saturate(250%)',
           WebkitBackdropFilter: 'blur(50px) saturate(250%)',
-          boxShadow: '0 8px 26px rgba(0,0,0,0.5)'
+          boxShadow: 'none'
         }}
       >
         {/* Borda interna sutil (stroke duplo) - PIXEL PERFECT */}

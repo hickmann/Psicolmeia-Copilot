@@ -30,13 +30,16 @@ async function createWindows() {
     transparent: true,
     resizable: false,
     movable: true,                         // Habilitado para permitir interação
-    hasShadow: true,                       // Reativar sombra para melhor visual
+    hasShadow: false,                      // Remover sombra para transparência completa
     alwaysOnTop: true,
     focusable: true,
     skipTaskbar: false,                    // Aparece na taskbar
     show: true,                            // Garantir que é visível
-    backgroundColor: '#00000000',
+    backgroundColor: '#00000000',          // Transparente
     roundedCorners: true,                  // Garantir cantos arredondados
+    opacity: 1.0,                          // Opacidade total
+    titleBarStyle: 'hidden',               // Esconder barra de título
+    titleBarOverlay: false,                // Desabilitar overlay da barra de título
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true, 
