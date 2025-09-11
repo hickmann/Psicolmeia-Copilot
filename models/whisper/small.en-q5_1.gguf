@@ -1,0 +1,13 @@
+# Mock GGUF model file for development/testing
+# This is not a real GGUF model, just a placeholder
+# In production, this would be replaced with the actual whisper.cpp model
+
+MOCK_MODEL_FILE
+Version: 1.0
+Type: Whisper Small English Q5_1
+Size: ~244MB (actual model size)
+Created: 2025-09-11
+Description: Mock model for whisper.cpp integration testing
+
+Note: This file should be replaced with the actual model downloaded from:
+https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.en-q5_1.gguf

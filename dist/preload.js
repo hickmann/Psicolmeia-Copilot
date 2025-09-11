@@ -15,9 +15,18 @@ try {
         closeApp: () => ipcRenderer.invoke('overlay:close-app'),
         which: () => (location.hash.replace('#', '') || 'hud') // "hud" ou "panel"
     });
-    // Expor função para abrir DevTools
+    // Expor APIs do Electron
     contextBridge.exposeInMainWorld('electronAPI', {
-        openDevTools: () => ipcRenderer.invoke('open-devtools')
+        openDevTools: () => ipcRenderer.invoke('open-devtools'),
+        // Whisper APIs
+        invoke: (channel, ...args) => ipcRenderer.invoke(channel, ...args),
+        // Listeners para eventos do Whisper
+        onWhisperTranscription: (callback) => {
+            ipcRenderer.on('whisper:transcription', callback);
+        },
+        removeWhisperListener: (callback) => {
+            ipcRenderer.removeListener('whisper:transcription', callback);
+        }
     });
     console.log('🔧 Preload: window.overlay exposto com sucesso');
 }

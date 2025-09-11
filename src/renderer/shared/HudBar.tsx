@@ -2,7 +2,7 @@ import { Play, Pause, Stars, BarChart3, Volume2, X } from 'lucide-react'
 import { useEffect, useState, useRef } from 'react'
 import { fmt } from '../lib/utils'
 import { useElapsed } from './useElapsed'
-import { SimpleVADController } from './SimpleVADController'
+import { WhisperVADController } from './WhisperVADController'
 import { TranscriptSegment, RecordingState } from './audio/types'
 
 interface HudBarProps {
@@ -58,10 +58,10 @@ export default function HudBar({ onRecordingStateChange, onTranscriptUpdate }: H
           style={{ border: '1px solid rgba(255,255,255,0.08)' }}
         />
 
-        {/* 1. SimpleVADController - PIXEL PERFECT */}
-        <SimpleVADController
+        {/* 1. WhisperVADController - PIXEL PERFECT */}
+        <WhisperVADController
           onTranscriptUpdate={(segments) => {
-            console.log('📝 HudBar: Recebendo segmentos do VAD:', segments.length)
+            console.log('📝 HudBar: Recebendo segmentos do Whisper VAD:', segments.length)
             onTranscriptUpdate?.(segments)
           }}
           onRecordingStateChange={onRecordingStateChange}

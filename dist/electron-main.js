@@ -1,6 +1,7 @@
 import { app, BrowserWindow, ipcMain, screen, shell } from 'electron';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { setupWhisperIPC } from './whisperProvider';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 let mainWindow = null;
@@ -82,7 +83,12 @@ async function createWindows() {
             mainWindow.setPosition(centerX(WINDOW_W), 16);
     });
 }
-app.whenReady().then(createWindows);
+app.whenReady().then(() => {
+    // Configurar IPC handlers do Whisper
+    setupWhisperIPC();
+    // Criar janelas
+    createWindows();
+});
 app.on('window-all-closed', () => { if (process.platform !== 'darwin')
     app.quit(); });
 app.on('activate', async () => { if (BrowserWindow.getAllWindows().length === 0)

@@ -1,0 +1,15 @@
+@echo off
+REM Mock whisper.cpp binary for development/testing
+REM This simulates whisper.cpp behavior without requiring the actual binary
+
+setlocal enabledelayedexpansion
+
+REM Simulate processing delay
+timeout /t 2 /nobreak > nul
+
+REM Generate mock transcription output
+echo [00:00:00.000 --> 00:00:03.000] Mock whisper transcription: Hello world, this is a test.
+echo [00:00:03.000 --> 00:00:06.000] This is a simulated transcription result.
+echo [00:00:06.000 --> 00:00:09.000] The whisper.cpp integration is working correctly.
+
+exit /b 0
